@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>StreamMaster · M3U8 TV Player</title>
+    <!-- HLS.js library for modern .m3u8 streaming on all browsers -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8/dist/hls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1e, #03060c);
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, 'Poppins', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        /* main TV card */
+        .tv-container {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(12px);
+            border-radius: 2.5rem;
+            padding: 1.8rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 215, 120, 0.3);
+            transition: all 0.2s;
+        }
+
+        /* video player area */
+        .player-section {
+            background: #000000;
+            border-radius: 1.8rem;
+            overflow: hidden;
+            box-shadow: 0 20px 35px -10px black;
+            border: 1px solid rgba(255, 200, 100, 0.5);
+        }
+
+        video {
+            width: 100%;
+            display: block;
+            background: #0a0c12;
+            aspect-ratio: 16 / 9;
+            object-fit: contain;
+        }
+
+        /* channel bar & controls */
+        .channel-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            margin-top: 0.2rem;
+            gap: 15px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 0.4rem 1.2rem;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+        }
+
+        .brand h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFE6B0, #FFB347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+        }
+
+        .brand span {
+            font-size: 1.7rem;
+        }
+
+        .status-badge {
+            background: #1e2a32cc;
+            padding: 0.3rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #c0e0ff;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #212c38;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            font-family: inherit;
+            color: #f5e7c8;
+            cursor: pointer;
+            transition: 0.15s;
+            backdrop-filter: blur(4px);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            border: 0.5px solid rgba(255, 215, 0, 0.4);
+        }
+
+        button i {
+            font-style: normal;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        button:hover {
+            background: #ffb347;
+            color: #0a0f1a;
+            border-color: #ffdd99;
+            transform: scale(0.96);
+            box-shadow: 0 1px 4px black;
+        }
+
+        .url-input-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            background: #0b101ad4;
+            padding: 1rem 1.4rem;
+            border-radius: 2rem;
+            align-items: center;
+        }
+
+        .url-input-area label {
+            font-weight: 500;
+            color: #ffdc97;
+            background: #00000055;
+            padding: 0.3rem 1rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+        }
+
+        input {
+            flex: 4;
+            background: #11161f;
+            border: 1px solid #ffcd7e;
+            padding: 10px 18px;
+            border-radius: 60px;
+            color: #fff2df;
+            font-family: monospace;
+            font-size: 0.85rem;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            border-color: #ffaa33;
+            box-shadow: 0 0 10px rgba(255, 180, 60, 0.4);
+            background: #0b111c;
+        }
+
+        .load-btn {
+            background: #e09d32;
+            color: #111;
+            font-weight: bold;
+            padding: 10px 28px;
+        }
+
+        .channel-presets {
+            margin-top: 1.2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .preset-title {
+            font-size: 0.8rem;
+            background: #00000070;
+            padding: 5px 12px;
+            border-radius: 32px;
+            color: #ffde9e;
+        }
+
+        .preset-btn {
+            background: #1f2a32;
+            padding: 6px 18px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .error-msg {
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: #ffb08c;
+            background: #2a1a10aa;
+            padding: 6px 14px;
+            border-radius: 40px;
+            display: inline-block;
+            font-family: monospace;
+        }
+
+        @media (max-width: 750px) {
+            .tv-container {
+                padding: 1rem;
+            }
+            .brand h1 {
+                font-size: 1.1rem;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            .url-input-area {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="tv-container">
+    <div class="channel-header">
+        <div class="brand">
+            <span>📺</span>
+            <h1>StreamMaster · M3U8 TV</h1>
+        </div>
+        <div class="status-badge" id="liveStatus">⚫ OFFLINE</div>
+        <div class="control-group">
+            <button id="fullscreenBtn" title="Fullscreen">⛶ FULL</button>
+            <button id="reloadBtn" title="Reload stream">⟳ RELOAD</button>
+        </div>
+    </div>
+
+    <!-- Video Player -->
+    <div class="player-section">
+        <video id="videoPlayer" controls playsinline poster="https://placehold.co/1920x1080/0A0F1A/FFB347?text=TV+Stream+Ready"></video>
+    </div>
+
+    <!-- Custom URL Loader -->
+    <div class="url-input-area">
+        <label>🔗 M3U8 LINK</label>
+        <input type="text" id="m3u8UrlInput" placeholder="Paste your .m3u8 stream URL here ... e.g., https://example.com/stream.m3u8" value="">
+        <button id="loadStreamBtn" class="load-btn">▶ LOAD & PLAY</button>
+    </div>
+
+    <!-- Preset channels (demo / legal test streams) -->
+    <div class="channel-presets">
+        <span class="preset-title">🎬 TEST STREAMS (public .m3u8 samples) </span>
+        <button class="preset-btn" data-url="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8">🌊 MUX Test (Ocean)</button>
+        <button class="preset-btn" data-url="https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8">🎥 Akamai Test</button>
+        <button class="preset-btn" data-url="https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8">🎞️ Sintel Trailer</button>
+        <button class="preset-btn" data-url="https://sample-videos.com/video123/hls/360p/playlist.m3u8">📺 Sample 360p</button>
+    </div>
+    <div class="error-msg" id="infoMessage">💡 Masukkan URL .m3u8 atau pilih preset contoh. HLS.js mendukung streaming modern.</div>
+</div>
+
+<script>
+    (function(){
+        // DOM elements
+        const video = document.getElementById('videoPlayer');
+        const urlInput = document.getElementById('m3u8UrlInput');
+        const loadBtn = document.getElementById('loadStreamBtn');
+        const reloadBtn = document.getElementById('reloadBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const liveStatusSpan = document.getElementById('liveStatus');
+        const infoMsgDiv = document.getElementById('infoMessage');
+
+        // HLS instance
+        let hls = null;
+        let currentUrl = '';
+        let isHlsSupported = false;
+
+        // Check HLS.js support & native HLS support (Safari)
+        function checkSupport() {
+            const videoElem = document.createElement('video');
+            if (videoElem.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS (Safari / iOS)
+                return 'native';
+            } else if (Hls.isSupported()) {
+                return 'hlsjs';
+            }
+            return false;
+        }
+
+        const support = checkSupport();
+        
+        // Update status UI
+        function setStatus(loading = false, error = false, text = '') {
+            if (loading) {
+                liveStatusSpan.innerHTML = '🔄 LOADING ...';
+                liveStatusSpan.style.color = '#FFD966';
+            } else if (error) {
+                liveStatusSpan.innerHTML = '⚠️ STREAM ERROR';
+                liveStatusSpan.style.color = '#ff8866';
+            } else {
+                liveStatusSpan.innerHTML = '🔴 LIVE · STREAMING';
+                liveStatusSpan.style.color = '#7eff9e';
+            }
+            if(text) {
+                infoMsgDiv.innerHTML = text;
+                setTimeout(() => {
+                    if(infoMsgDiv.innerHTML === text) {
+                        // keep for 4 sec then reset if not critical
+                        setTimeout(() => {
+                            if(infoMsgDiv.innerHTML === text) 
+                                infoMsgDiv.innerHTML = '💡 Gunakan URL .m3u8 atau pilih channel contoh.';
+                        }, 5000);
+                    }
+                }, 100);
+            }
+        }
+
+        function clearStatusMessage() {
+            // but not overwriting error style
+        }
+
+        // Stop and destroy current HLS / reset video
+        function destroyPlayer() {
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            // stop native playback
+            video.pause();
+            // remove src object
+            video.removeAttribute('src');
+            video.load();   // reset
+        }
+
+        // Main load function: load m3u8 with best method
+        function loadM3U8(url) {
+            if (!url || url.trim() === '') {
+                infoMsgDiv.innerHTML = '❌ URL tidak boleh kosong. Masukkan link .m3u8 yang valid.';
+                setStatus(false, true, 'URL kosong');
+                return false;
+            }
+            
+            // sanitize
+            url = url.trim();
+            currentUrl = url;
+            
+            // Stop previous playback
+            destroyPlayer();
+            
+            setStatus(true, false, `⏳ Memuat stream: ${url.substring(0, 60)}${url.length>60?'...':''}`);
+            
+            if (support === 'native') {
+                // Safari / native HLS
+                video.src = url;
+                video.addEventListener('loadedmetadata', () => {
+                    setStatus(false, false);
+                    infoMsgDiv.innerHTML = '✅ Native HLS aktif (Safari) — stream siap.';
+                    video.play().catch(e => {
+                        console.warn('Autoplay blocked?', e);
+                        infoMsgDiv.innerHTML = '⚠️ Autoplay dicegah browser. Klik play manual.';
+                        setStatus(false, false);
+                    });
+                });
+                video.addEventListener('error', (e) => {
+                    console.error('Native video error', e);
+                    setStatus(false, true, '❌ Gagal memutar stream (native error). Periksa URL atau CORS.');
+                });
+                video.play().catch(e => {
+                    infoMsgDiv.innerHTML = '🔇 Autoplay tidak diizinkan, klik tombol play.';
+                });
+                return true;
+            } 
+            else if (support === 'hlsjs') {
+                if (!Hls) {
+                    setStatus(false, true, '❌ HLS.js library gagal dimuat.');
+                    return false;
+                }
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    maxBufferLength: 30,
+                    backBufferLength: 30,
+                });
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    setStatus(false, false);
+                    infoMsgDiv.innerHTML = '🎉 M3U8 berhasil dimuat! Stream siap ditonton.';
+                    video.play().catch(e => {
+                        infoMsgDiv.innerHTML = '🎬 Stream siap, klik play untuk menonton.';
+                    });
+                });
+                
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                setStatus(false, true, '⚠️ Network error: cek koneksi atau CORS.');
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                setStatus(false, true, '⚠️ Media error: stream mungkin corrupt.');
+                                break;
+                            default:
+                                setStatus(false, true, `HLS error: ${data.details}`);
+                        }
+                        console.error('HLS fatal error', data);
+                        // attempt recovery
+                        if (hls) hls.recoverMediaError();
+                    } else {
+                        console.warn('HLS non-fatal:', data);
+                        infoMsgDiv.innerHTML = `⚠️ ${data.details}`;
+                    }
+                });
+                return true;
+            } 
+            else {
+                setStatus(false, true, '❌ Browser tidak mendukung HLS (.m3u8). Update Chrome/Firefox/Edge atau gunakan Safari.');
+                infoMsgDiv.innerHTML = '❌ Browser tidak support HLS.js atau native HLS. Gunakan Chrome/Edge terbaru.';
+                return false;
+            }
+        }
+
+        // reload current stream
+        function reloadStream() {
+            if (currentUrl) {
+                loadM3U8(currentUrl);
+            } else {
+                infoMsgDiv.innerHTML = 'Tidak ada stream aktif. Masukkan URL atau pilih preset.';
+            }
+        }
+
+        // load from input field
+        function loadFromInput() {
+            let url = urlInput.value.trim();
+            if (url === "") {
+                infoMsgDiv.innerHTML = '✏️ Masukkan URL .m3u8 dahulu (contoh: https://.../playlist.m3u8)';
+                return;
+            }
+            loadM3U8(url);
+        }
+
+        // FULLSCREEN logic for video
+        function toggleFullscreen() {
+            if (!video) return;
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(err => console.warn(err));
+            } else {
+                video.requestFullscreen().catch(err => {
+                    infoMsgDiv.innerHTML = 'Fullscreen tidak diizinkan: ' + err.message;
+                });
+            }
+        }
+
+        // preset buttons
+        function setupPresets() {
+            const presetBtns = document.querySelectorAll('.preset-btn');
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const m3u8Url = btn.getAttribute('data-url');
+                    if (m3u8Url) {
+                        urlInput.value = m3u8Url;
+                        loadM3U8(m3u8Url);
+                    }
+                });
+            });
+        }
+
+        // helper: autoplay attempt on page with visibility? but not forced
+        // also handle visibility API for reconnection optional 
+        window.addEventListener('load', () => {
+            // optional welcome preset: load first test stream as demo (the ocean stream)
+            // but we wait a bit to set a nice default preview? show something interesting
+            const defaultDemoUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+            // prefill input with demo url so user sees example
+            urlInput.value = defaultDemoUrl;
+            // optionally load automatically? but user might prefer manual, but we load it to showcase!
+            setTimeout(() => {
+                if (!currentUrl) {
+                    loadM3U8(defaultDemoUrl);
+                }
+            }, 300);
+        });
+
+        // add event listeners
+        loadBtn.addEventListener('click', loadFromInput);
+        reloadBtn.addEventListener('click', reloadStream);
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+        
+        // support for pressing "Enter" on input field
+        urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadFromInput();
+            }
+        });
+
+        // detect when video ends? Not needed for live
+        video.addEventListener('stalled', () => {
+            infoMsgDiv.innerHTML = '⏸️ Stream buffering ... pastikan koneksi stabil.';
+        });
+        
+        video.addEventListener('playing', () => {
+            if (!liveStatusSpan.innerHTML.includes('LIVE')) {
+                setStatus(false, false);
+                infoMsgDiv.innerHTML = '📡 Streaming berjalan lancar.';
+            }
+        });
+        
+        // Additional HLS recovery on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) return;
+            if (hls && currentUrl) {
+                // if stream seems stuck, optional recover but not heavy
+                if (video.paused || video.readyState < 2) {
+                    console.log("resume attempt after visibility");
+                    video.play().catch(e=>null);
+                }
+            }
+        });
+        
+        // Option to show user agent info for debug
+        console.log(`Support mode: ${support}`);
+        
+        // gracefully handle page unload to avoid HLS errors
+        window.addEventListener('beforeunload', () => {
+            if (hls) {
+                hls.destroy();
+            }
+        });
+        
+        setupPresets();
+        
+        // Additional information: if native playback but URL fails, we catch
+        video.addEventListener('error', (e) => {
+            const err = video.error;
+            if (err && support === 'native') {
+                let msg = 'Video error: ';
+                if (err.code === 4) msg += 'Media tidak ditemukan / CORS / URL invalid';
+                else msg += err.message;
+                setStatus(false, true, msg);
+                infoMsgDiv.innerHTML = `❌ ${msg} . Pastikan URL .m3u8 valid dan mendukung CORS.`;
+            }
+        });
+        
+        // provide small fix: when new stream loaded, reset UI
+        function resetUIForNewStream() {
+            // no extra
+        }
+        
+        // make loadM3U8 globally callable from console if needed (not required)
+        window.debugLoad = loadM3U8;
+    })();
+</script>
+</body>
+</html>
